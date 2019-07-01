@@ -89,7 +89,7 @@ Dynamic.MB <- function(data, niter, var.cols, method = c('Constraint', 'Score'),
   
   for(n in 1:length(CPP)) {
     
-    CPP[n]     <- EDISON.convert$ï..Year[which(CPP[n] == EDISON.convert$CPP)]
+    CPP[n]     <- EDISON.convert$Ã¯..Year[which(CPP[n] == EDISON.convert$CPP)]
     
   }
   
