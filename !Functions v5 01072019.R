@@ -8,6 +8,16 @@
 
 ###############################################################################
 
+
+library(bnlearn)
+library(foreach)
+library(doParallel)
+library(plyr)
+library(dplyr)
+library(Metrics)
+
+
+
 ### 1) Piece-wise Markovian Blanket Feature selection
 
 Dynamic.MB <- function(data, niter, var.cols, method = c('Constraint', 'Score'), target, 
@@ -191,17 +201,12 @@ Dynamic.MB <- function(data, niter, var.cols, method = c('Constraint', 'Score'),
 
 
 ##############################################################################################
-##############################################################################################
-
-library(bnlearn)
-library(foreach)
-library(doParallel)
-library(plyr)
-library(dplyr)
-library(Metrics)
-
 
 ### 2) Learn Network structures
+
+##############################################################################################
+
+
 
 Learn.Arcs   <- function(data, MBList, MB.threshold = 0.85, alpha = 0.95, target.node = 'Yield', 
                          noarc = NULL, R = 250) {
@@ -343,158 +348,15 @@ Learn.Arcs   <- function(data, MBList, MB.threshold = 0.85, alpha = 0.95, target
   
 }
 
-##########################################################################
-##########################################################################
 
-
-
-
-
-####################################################################################
-
-### 3) Code to learn parameters, predict to test data and log RMSE 
-
-####################################################################################
-
-
-library(bnlearn)
-library(foreach)
-library(doParallel)
-library(plyr)
-library(dplyr)
-library(Metrics)
-
-Corn.parameters <- list()
-
-model.strength  <- list()
-
-for(i in 1:6) {
-  
-  Corn.parameters[[i]] <- list()
-  
-  model.strength[[i]]  <- list() 
-  
-  for(j in 1:length(Corn.90[[i]])) {
-    
-    
-    temp.dat                   <- data.frame(CornExtense.train[[i]])
-    
-    
-    if(DELTA_Corn.res[[i]]$Breaks[j] != 2017) {
-      
-      temp.dat                   <- data.frame(temp.dat %>% filter(Year < DELTA_Corn.res[[i]]$Breaks[j]))
-      
-    } else if(DELTA_Corn.res[[i]]$Breaks[j] == 2017) {
-      
-      
-      temp.dat                   <- data.frame(temp.dat %>% filter(Year >= DELTA_Corn.res[[i]]$Breaks[j-1]))
-      
-      
-    }
-    
-    temp.dat                   <- data.frame(temp.dat[, c(colnames(temp.dat) %in% 
-                                                            nodes(Corn.95.pars[[i]][[j]]))])
-    
-    #temp.dat$DELTA_Corn        <- unlist(temp.med)
-    
-    
-    Corn.parameters[[i]][[j]]      <- bn.fit(Corn.95.pars[[i]][[j]], temp.dat)
-    
-    model.strength[[i]][[j]]       <- summary(lm(DELTA_Corn ~., data = temp.dat))
-    
-  }
-  
-}
-
-
-Corn.95.pars.bnfit <- Corn.parameters
-
-
-
-#######################################################################################################
-### Use model to predict
-#######################################################################################################
-
-bn.res <- list()
-
-for(i in 1:length(Corn.95.pars.bnfit)) {
-  
-  bn.res[[i]] <- list()
-  
-  for(j in 1:2) {
-    
-    temp.dat                   <- data.frame(CornExtense.test[[i]])
-    
-    
-    if(DELTA_Corn.res[[i]]$Breaks[j] != 2017) {
-      
-      temp.dat                   <- data.frame(temp.dat %>% filter(Year < DELTA_Corn.res[[i]]$Breaks[j]))
-      
-    } else if(DELTA_Corn.res[[i]]$Breaks[j] == 2017) {
-      
-      
-      temp.dat                   <- data.frame(temp.dat %>% filter(Year >= DELTA_Corn.res[[i]]$Breaks[j-1]))
-      
-      
-    }
-    
-    temp.dat                   <- data.frame(temp.dat[, c(colnames(temp.dat) %in% 
-                                                            nodes(Corn.95.pars[[i]][[j]]))])
-    
-    
-    
-    res <- predict(Corn.95.pars.bnfit[[i]][[j]], 'DELTA_Corn', temp.dat, method = 'bayes-lw')
-    
-    bn.res[[i]][[j]] <- res
-    
-  }
-  
-  
-  
-}
-
-
-
-for(i in 1:length(bn.res)) {
-  
-  for(j in 1:2) {
-    
-    temp.dat                   <- data.frame(CornExtense.test[[i]])
-    
-    
-    if(DELTA_Corn.res[[i]]$Breaks[j] != 2017) {
-      
-      temp.dat                   <- data.frame(temp.dat %>% filter(Year < DELTA_Corn.res[[i]]$Breaks[j]))
-      
-    } else if(DELTA_Corn.res[[i]]$Breaks[j] == 2017) {
-      
-      
-      temp.dat                   <- data.frame(temp.dat %>% filter(Year >= DELTA_Corn.res[[i]]$Breaks[j-1]))
-      
-      
-    }
-    
-    print(plot(bn.res[[i]][[j]], temp.dat$DELTA_Corn))
-    
-    bn.res[[i]][[j]]           <- rmse(temp.dat$DELTA_Corn, bn.res[[i]][[j]])
-    
-  }
-  
-}
-
-
-
-Corn.95.pars.rmse <- bn.res
-
-Network.RMSE <- data.frame(Corn.90 = unlist(Corn.90.rmse), Corn.95 = unlist(Corn.95.rmse),
-                           Corn.90.pars = unlist(Corn.90.pars.rmse), Corn.95.pars = unlist(Corn.95.pars.rmse))
 
 
 ###################################################################################
+
+### 3) Run the model
+
 ###################################################################################
 
-
-### 4) Run the model
 
 
 #***********************************************************************************************
