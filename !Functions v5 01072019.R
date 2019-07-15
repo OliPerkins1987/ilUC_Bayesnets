@@ -45,6 +45,12 @@ Dynamic.MB <- function(data, niter, var.cols, method = c('Constraint', 'Score'),
   
   set.seed(101)
   
+  #####################################################################
+  
+  ### Create temporal break points
+  
+  #####################################################################
+  
   CPP      <- foreach(m=1:100) %dopar% { 
     
     require(dplyr)
@@ -96,6 +102,12 @@ Dynamic.MB <- function(data, niter, var.cols, method = c('Constraint', 'Score'),
   }
   
   
+    ########################
+    
+    ### Convert study year integer (1-28) to calendar year (1990-2017)
+    
+    #########################
+    
   
   for(n in 1:length(CPP)) {
     
@@ -141,7 +153,7 @@ Dynamic.MB <- function(data, niter, var.cols, method = c('Constraint', 'Score'),
   data.res$MB <- list()
   
   ####################################
-  ### Run MB
+  ### Run Markovian Blanket feature selection
   ####################################
   
   for(j in 1:length(dat.list)) {
@@ -228,7 +240,7 @@ Learn.Arcs   <- function(data, MBList, MB.threshold = 0.85, alpha = 0.95, target
     
     ###############
     
-    ### make breaks
+    ### Use breaks from Dynamic.MB list output
     
     ###############
     
@@ -267,19 +279,13 @@ Learn.Arcs   <- function(data, MBList, MB.threshold = 0.85, alpha = 0.95, target
       
     }
     
-    ###################
-    
-    ### 2) identify additional breaks - come back to this if necessary 
-    
-    ### *** WE SHOULD DO THIS AS A SEPERATE PROCESS ***
-    
-    ###################
+
     
     
     
     ###################
     
-    ### 3) set up BN models
+    ### 2) set up BN models
     
     ###################
     
@@ -307,6 +313,12 @@ Learn.Arcs   <- function(data, MBList, MB.threshold = 0.85, alpha = 0.95, target
       
       boot.bn      <- boot.strength(data.filter[[j]], R = R, algorithm = 'hc', 
                                     algorithm.args = list(blacklist = temp.noarc), cluster = cl)
+      
+      ###################################
+      
+      ### Extract averaged network
+      
+      ###################################
       
       boot.bn      <- boot.bn[boot.bn$direction >= 0.8, ]
       
