@@ -226,8 +226,8 @@ Learn.Arcs   <- function(data, MBList, MB.threshold = 0.85, alpha = 0.95, target
   
   
   #######
-  ## Learns Bayesian Network Structure given a target variable
-  ## MB.List is the output list of Dynamic.MB
+  ## Learns Bayesian Network Structure given a target variable, feature screening and temporal subcomponents
+  ## Temporal sub components & feature selection are done using MB.List, the output of Dynamic.MB function
   #######
 
   
