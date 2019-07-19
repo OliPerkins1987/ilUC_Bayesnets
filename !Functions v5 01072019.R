@@ -1050,3 +1050,381 @@ for(year in 1990:2017) {
 }
 
 
+
+
+#************************************************************************************************
+#################################################################################################
+
+### 4) Bayesian Network parameter updating function for Monte Carlo Simulation
+
+#################################################################################################
+#************************************************************************************************
+
+
+Soy.Bayesian         <- FINAL.Soy
+Soy.Bayesian.Extense <- FINAL.SoyExtense
+
+Corn.Bayesian         <- FINAL.Corn
+Corn.Bayesian.Extense <- FINAL.CornExtense
+
+###################################################################
+### Stanmods objects are lists of bayesian GLMs, created with the Rstanarm library
+###################################################################
+
+for(iteration in 1:1000) {
+
+  
+  for(mod in 1:length(FINAL.Soy)) {
+
+    
+    
+    ########################################################
+    
+    ### Soy Extense updating
+    
+    ########################################################
+    
+    
+    for(sub.model in 1:length(FINAL.SoyExtense[[mod]])) {
+      
+      ################
+      ### take random sample from Markov Chain Monte Carlo posterior distributions 
+      ################
+      
+      random.pars <- lapply(stanmods.Extense.Soy[[mod]][[sub.model]], as.matrix)
+      random.pars <- lapply(random.pars, function(x){apply(x, 2, function(x) {sample(x, size = 1, replace = FALSE)})})
+      
+      var.coefs   <- unique(unlist(lapply(random.pars, length)))
+      
+      var.coefs   <- var.coefs[var.coefs != 1]
+      
+      for(var in 1:length(random.pars)) {
+        
+        if(length(random.pars[[var]]) != var.coefs) {
+          
+          random.pars[[var]] <- rep(0, times = var.coefs)
+          
+        }
+        
+      }
+      
+      
+      
+      
+      if(length(stanmods.Extense.Soy[[mod]][[sub.model]]) > 1) {
+      
+      ### prepare data
+        
+      pars                                         <- data.frame(random.pars)
+      dev.resid                                    <- as.numeric(pars[nrow(pars), ])
+      pars                                         <- pars[-nrow(pars), ]
+      colnames(pars)                               <- c(0, 1, 2)
+      
+      ### Insert
+      
+      Soy.Bayesian.Extense[[mod]][[sub.model]]$DELTA_Soy <- list(coef = as.matrix(pars), sd = dev.resid)
+      
+      #print(all.equal(names(Soy.Bayesian.Extense[[mod]][[sub.model]]$DELTA_Soy), names(random.pars)[1:length(random.pars)-1]))
+      
+      
+      } else if(length(stanmods.Extense.Soy[[mod]][[sub.model]]) == 1) {
+        
+        ### prepare data
+        
+        pars       <- as.numeric(random.pars[-length(random.pars)])
+        dev.resid  <- as.numeric(random.pars[length(random.pars)])
+        
+        ### Insert
+        
+        Soy.Bayesian.Extense[[mod]][[sub.model]]$DELTA_Soy <- list(coef = pars, sd = dev.resid)
+        
+        #print(all.equal(Soy.Bayesian.Extense[[mod]][[sub.model]]$DELTA_Soy$coefficients, as.matrix(pars)))
+        
+        
+      }
+      
+      
+      
+      
+      
+    }
+    
+    
+    ##########################################################
+    
+    ### Corn Extense Updating
+    
+    ##########################################################
+    
+    for(sub.model in 1:length(FINAL.CornExtense[[mod]])) {
+      
+      #coef.dif[[mod]][[sub.model]] <- list()
+      
+      #print(sub.model)
+      
+      
+      ### random sample
+      
+      random.pars <- lapply(stanmods.Extense.Corn[[mod]][[sub.model]], as.matrix)
+      random.pars <- lapply(random.pars, function(x){apply(x, 2, function(x) {sample(x, size = 1, replace = FALSE)})})
+      
+      var.coefs   <- unique(unlist(lapply(random.pars, length)))
+      
+      var.coefs   <- var.coefs[var.coefs != 1]
+      
+      for(var in 1:length(random.pars)) {
+        
+        if(length(random.pars[[var]]) != var.coefs) {
+          
+          random.pars[[var]] <- rep(0, times = var.coefs)
+          
+        }
+        
+      }
+      
+      
+      if(length(stanmods.Extense.Corn[[mod]][[sub.model]]) > 1) {
+        
+        ### prepare data
+        
+        pars                                         <- data.frame(random.pars)
+        dev.resid                                    <- as.numeric(pars[nrow(pars), ])
+        pars                                         <- pars[-nrow(pars), ]
+        colnames(pars)                               <- c(0, 1, 2)
+        
+        ### Insert
+        
+        Corn.Bayesian.Extense[[mod]][[sub.model]]$DELTA_Corn <- list(coef = as.matrix(pars), sd = dev.resid)
+        
+        print(all.equal(Corn.Bayesian.Extense[[mod]][[sub.model]]$DELTA_Corn$coefficients, as.matrix(pars)))
+        
+      } else if(length(stanmods.Corn.Extense[[mod]][[sub.model]] == 1)) {
+        
+        
+        ### prep
+        
+        pars       <- as.numeric(random.pars[-length(random.pars)])
+        dev.resid  <- as.numeric(random.pars[length(random.pars)])
+        
+        ### insert
+        
+        Corn.Bayesian.Extense[[mod]][[sub.model]]$DELTA_Corn <- list(coef = as.matrix(pars), sd = dev.resid)
+        
+        #print(all.equal(names(Corn.Bayesian.Extense[[mod]][[sub.model]]$DELTA_Corn), names(random.pars)[1:length(random.pars)-1]))
+        
+      }
+      
+      
+      
+    }
+    
+    
+    ############################################################
+    
+    ### Soy Intense updating
+    
+    ############################################################
+    
+    
+    for(sub.model in 1:length(FINAL.Soy[[mod]])) {
+      
+      #coef.dif[[mod]][[sub.model]] <- list()
+      
+      #print(sub.model)
+      
+      
+      ### random sample
+      
+      random.pars <- as.matrix(stanmods.Soy[[mod]][[sub.model]])
+      
+      #coef.dif[[mod]][sub.model] <- (Metrics::rmse(apply(random.pars, 2, mean)[1:ncol(random.pars)-1], FINAL.Soy[[mod]][[sub.model]]$Yield$coefficients))
+      
+      random.pars <- apply(random.pars, 2, function(x) {sample(x, size = 1, replace = FALSE)}) #set replace to false
+      
+
+      ### prepare data
+      
+      pars       <- as.numeric(random.pars[-length(random.pars)])
+      dev.resid  <- as.numeric(random.pars[length(random.pars)])
+      
+      ### insert
+      
+      Soy.Bayesian[[mod]][[sub.model]]$Yield <- list(coef = pars, sd = dev.resid)
+      
+      #print(all.equal(names(Soy.Bayesian[[mod]][[sub.model]]$Yield), names(random.pars)[1:length(random.pars)-1]))
+      
+    }
+    
+    
+    
+    ##################################
+    
+    ### Corn intense updating
+    
+    ##################################
+    
+    
+    for(sub.model in 1:length(FINAL.Corn[[mod]])) {
+      
+      #coef.dif[[mod]][[sub.model]] <- list()
+      
+      #print(sub.model)
+      
+      
+      ## sample
+      
+      random.pars <- as.matrix(stanmods.Corn[[mod]][[sub.model]])
+      
+      #coef.dif[[mod]][sub.model] <- (Metrics::rmse(apply(random.pars, 2, mean)[1:ncol(random.pars)-1], FINAL.Corn[[mod]][[sub.model]]$Yield$coefficients))
+      
+      random.pars <- apply(random.pars, 2, function(x) {sample(x, size = 1, replace = FALSE)}) #set replace to false
+      
+      ## prepare data
+      
+      pars       <- as.numeric(random.pars[-length(random.pars)])
+      dev.resid  <- as.numeric(random.pars[length(random.pars)])
+      
+      
+      Corn.Bayesian[[mod]][[sub.model]]$Yield <- list(coef = pars, sd = dev.resid)
+      
+      #print(all.equal(names(Corn.Bayesian[[mod]][[sub.model]]$Yield), names(random.pars)[1:length(random.pars)-1]))
+      
+    }
+    
+    
+    ###########################################################
+    
+    ### Do Soy Price updating
+    
+    ###########################################################
+    
+    
+    for(sub.model in 1:length(FINAL.Soy[[mod]])) {
+      
+
+      
+      for(Pricenode in 1:length(FINAL.Soy[[mod]][[sub.model]])) {
+        
+        #print(sub.model)
+        
+        
+        if(Pricenode > length(stanmods.Price.Soy[[mod]][[sub.model]])) {
+          
+          next()
+        }
+        
+        
+        if(length(stanmods.Price.Soy[[mod]][[sub.model]][[Pricenode]]) > 0) {
+          
+          
+          random.pars <- as.matrix(stanmods.Price.Soy[[mod]][[sub.model]][[Pricenode]])
+          
+          random.pars <- apply(random.pars, 2, function(x) {sample(x, size = 1, replace = FALSE)}) #set replace to false
+          
+          
+          if(mod == 1 & sub.model == 2 & Pricenode == 6) {
+            
+            
+            random.pars[length(random.pars)+1] <- 0 
+            
+            names(random.pars)[length(random.pars)] <- 'Expection'
+            
+            random.pars <- random.pars[c(1, 2, length(random.pars), 3, 4)]
+            
+            
+          }
+          
+          
+          if(mod == 1 & sub.model == 2 & Pricenode == 7) {
+            
+            
+            random.pars[length(random.pars)+1] <- 0 
+            
+            names(random.pars)[length(random.pars)] <- 'Expection'
+            
+            random.pars <- random.pars[c(1:3, length(random.pars), 4, 5, 6)]
+            
+            
+          }
+          
+          
+          if(mod == 3 & sub.model == 2 & Pricenode == 4) {
+            
+            random.pars[length(random.pars)+1] <- 0 
+            
+            names(random.pars)[length(random.pars)] <- 'Expection'
+            
+            random.pars <- random.pars[c(1:2, length(random.pars), 3)]
+            
+          }
+          
+
+          ### Prepare data
+          
+          
+          pars       <- as.numeric(random.pars[-length(random.pars)])
+          dev.resid  <- as.numeric(random.pars[length(random.pars)])
+          index      <- FINAL.Soy[[mod]][[sub.model]][[Pricenode]]$node
+          
+          ### Insert
+          
+          Soy.Bayesian[[mod]][[sub.model]][[`index`]] <- list(coef = pars, sd = dev.resid)
+          
+          #print(all.equal(names(Soy.Bayesian[[mod]][[sub.model]][[`index`]]), names(random.pars)[1:length(random.pars)-1]))
+          
+          
+        }
+        
+        
+      }
+      
+    }
+    
+    
+    #################################
+    
+    ### Corn Price Updating
+    
+    #################################
+    
+    
+    for(sub.model in 1:length(FINAL.Corn[[mod]])) {
+      
+      
+      
+      for(Pricenode in 1:length(FINAL.Corn[[mod]][[sub.model]])) {
+        
+        #print(sub.model)
+        
+        if(Pricenode > length(stanmods.Price.Corn[[mod]][[sub.model]])) {
+          
+          next()
+        }
+        
+        if(length(stanmods.Price.Corn[[mod]][[sub.model]][[Pricenode]]) > 0) {
+          
+          random.pars <- as.matrix(stanmods.Price.Corn[[mod]][[sub.model]][[Pricenode]])
+          
+          random.pars <- apply(random.pars, 2, function(x) {sample(x, size = 1, replace = FALSE)}) #set replace to false
+          
+          
+          
+          pars       <- as.numeric(random.pars[-length(random.pars)])
+          dev.resid  <- as.numeric(random.pars[length(random.pars)])
+          index      <- FINAL.Corn[[mod]][[sub.model]][[Pricenode]]$node
+          
+          Corn.Bayesian[[mod]][[sub.model]][[`index`]] <- list(coef = pars, sd = dev.resid)
+          
+        }
+        
+        #print(names(Soy.Bayesian[[mod]][[sub.model]]$Yield$coefficients) ==  names(random.pars)[1:length(random.pars)-1])
+        
+      }
+      
+    }
+    
+    
+  }
+
+
+
