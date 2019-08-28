@@ -518,9 +518,7 @@ return(list(model.parameters, bn.res, BIC))
 ###########################################################################################################################
 
 
-setwd('C:/Users/Oli/Desktop/Backups/Model Data')
-
-### lambda function from stackoverflow
+### lambda function from stackoverflow, creates formula objects on the fly from dataframe column names
 
 ### https://stackoverflow.com/questions/25954361/how-to-insert-dataframe-column-name-into-equation-r
 
