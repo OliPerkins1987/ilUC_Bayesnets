@@ -9,16 +9,22 @@
 ###############################################################################
 
 
-library(bnlearn)
-library(foreach)
-library(doParallel)
-library(plyr)
-library(dplyr)
-library(Metrics)
+library(bnlearn)        ### machine learning of bayesian networks
+library(foreach)        ### parralel processing
+library(doParallel)     ### parallel processing
+library(parallel)       ### parallel processing
+library(plyr)           ### data management
+library(dplyr)          ### data management
+library(Metrics)        ### used to calculate RMSE
+library(rstanarm)       ### Bayesian GLMs for node parameters
 
 
+#################################################################################################
 
-### 1) Piece-wise Markovian Blanket Feature selection
+### 1) Time break identification & Markovian Blanket Feature selection
+
+#################################################################################################
+
 
 Dynamic.MB <- function(data, niter, var.cols, method = c('Constraint', 'Score'), target, 
                        koralpha = 'k', k = 3, alpha = 0.5) {
@@ -511,5 +517,178 @@ return(list(model.parameters, bn.res, BIC))
 
 ###########################################################################################################################
 
+
+setwd('C:/Users/Oli/Desktop/Backups/Model Data')
+
+### lambda function from stackoverflow
+
+### https://stackoverflow.com/questions/25954361/how-to-insert-dataframe-column-name-into-equation-r
+
+xyform <- function (y_var, x_vars) {
+  # y_var: a length-one character vector
+  # x_vars: a character vector of object names
+  as.formula(sprintf("%s ~ %s", y_var, paste(x_vars, collapse = " + ")))
+}
+
+options(mc.cores = parallel::detectCores())
+
+
+########################################################################
+
+### Yield
+
+########################################################################
+
+### Code is for Corn parameters
+
+stanmods.Corn <- list()
+
+for(i in 1:length(FINAL.Corn)) {
+  
+  stanmods.Corn[[i]] <- list()
+  
+  for(j in 1:length(FINAL.Corn[[i]])) {
+    
+    if(CornMedian.score[[i]][j] != 2017) {
+      
+      dat.temp <- Corn.median[[i]][Corn.median[[i]]$Year < CornMedian.score[[i]][j], ]
+      
+    } else if(CornMedian.score[[i]][j] == 2017) {
+      
+      dat.temp <- Corn.median[[i]][Corn.median[[i]]$Year >= CornMedian.score[[i]][j-1], ]
+      
+    }
+    
+    dat.temp <- dat.temp[, which(colnames(dat.temp) %in% c(FINAL.Corn[[i]][[j]]$Yield$node, 
+                                                           FINAL.Corn[[i]][[j]]$Yield$parents))]
+    
+    stanmods.Corn[[i]][[j]]  <- stan_glm(Yield ~. - Yield, 
+                                    algorithm = 'sampling', data = dat.temp, iter = 2000, chains = 4) 
+    
+  }
+  
+}
+
+
+
+#####################################################################################
+
+### Yield Price Dependencies
+
+#####################################################################################
+
+stanmods.Price.Corn <- list()
+
+for(i in 1:length(FINAL.Corn)) {
+  
+  stanmods.Price.Corn[[i]] <- list()
+  
+  for(j in 1:length(FINAL.Corn[[i]])) {
+    
+    stanmods.Price.Corn[[i]][[j]] <- list()
+    
+    if(CornMedian.score[[i]][j] != 2017) {
+      
+      dat.temp <- Corn.median[[i]][Corn.median[[i]]$Year < CornMedian.score[[i]][j], ]
+      
+    } else if(CornMedian.score[[i]][j] == 2017) {
+      
+      dat.temp <- Corn.median[[i]][Corn.median[[i]]$Year >= CornMedian.score[[i]][j-1], ]
+      
+    }
+    
+    for(k in 1:length(FINAL.Corn[[i]][[j]])) {
+      
+      kids <- FINAL.Corn[[i]][[j]][[k]]$parents
+      
+      print(kids)
+      
+      
+        if('Expection' %in% kids | 'Price_lag1' %in% kids) {
+          
+          dat.temp2 <- dat.temp[, which(colnames(dat.temp) %in% c(FINAL.Corn[[i]][[j]][[k]]$node, 
+                                                                  FINAL.Corn[[i]][[j]][[k]]$parents))]
+          
+          
+          form <- xyform(y_var = FINAL.Corn[[i]][[j]][[k]]$node, x_vars = colnames(dat.temp2)[
+            colnames(dat.temp2) != FINAL.Corn[[i]][[j]][[k]]$node])
+          
+          stanmods.Price.Corn[[i]][[j]][[k]]  <- stan_glm(form, 
+                                                    algorithm = 'sampling', data = dat.temp2, iter = 2000, chains = 4) 
+                                                     
+          
+          
+        }
+        
+        
+      } 
+    
+    }
+      
+  } 
+    
+
+
+#############################################################################################
+
+### Extensification
+
+#############################################################################################
+
+
+stanmods.Extense.Corn <- list()
+
+for(i in 1:length(FINAL.CornExtense)) {
+  
+  stanmods.Extense.Corn[[i]] <- list()
+  
+  for(j in 1:length(FINAL.CornExtense[[i]])) {
+    
+    stanmods.Extense.Corn[[i]][[j]] <- list()
+    
+    if(DELTA_Corn.res[[i]][j] != 2017) {
+      
+      dat.temp <- Corn.Extense[[i]][Corn.Extense[[i]]$Year < DELTA_Corn.res[[i]][j], ]
+      
+    } else if(DELTA_Corn.res[[i]][j] == 2017) {
+      
+      dat.temp <- Corn.Extense[[i]][Corn.Extense[[i]]$Year >= DELTA_Corn.res[[i]][j-1], ]
+      
+    }
+    
+    dat.temp <- dat.temp[, which(colnames(dat.temp) %in% c(FINAL.CornExtense[[i]][[j]]$DELTA_Corn$node, 
+                                                           FINAL.CornExtense[[i]][[j]]$DELTA_Corn$parents))]
+    
+    if(! 'PreGM_Acres' %in% FINAL.CornExtense[[i]][[j]]$DELTA_Corn$parents) {
+      
+      
+      stanmods.Extense.Corn[[i]][[j]]  <- stan_glm(DELTA_Corn ~. - DELTA_Corn, 
+                                                  algorithm = 'sampling', data = dat.temp, iter = 2000, chains = 4) 
+      
+    } else if('PreGM_Acres' %in% FINAL.CornExtense[[i]][[j]]$DELTA_Corn$parents) {
+      
+      
+      for(level in 1:3) {
+        
+        
+        dat.temp2 <- dat.temp[as.numeric(dat.temp$PreGM_Acres) == level, ]
+        
+        
+        if(nrow(dat.temp2) > 0) {
+          
+          stanmods.Extense.Corn[[i]][[j]][[level]]  <- stan_glm(DELTA_Corn ~. - DELTA_Corn, 
+                                                               algorithm = 'sampling', data = dat.temp2[, colnames(dat.temp2) != 'PreGM_Acres'], iter = 2000, chains = 4)
+          
+        }
+        
+      }
+      
+    }
+    
+    
+    
+  }
+  
+}
 
 
