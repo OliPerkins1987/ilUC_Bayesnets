@@ -6,8 +6,6 @@
 
 ### Functions together learn structures and parameters of subcomponent Bayesian Network models.
 
-### Author: Oli Perkins May-July 2019
-
 ###############################################################################
 
 
